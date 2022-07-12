@@ -1,0 +1,23 @@
+version: "3.9"  # optional since v1.27.0
+services:
+  notifier:
+    build: .
+    env_file: ./postgres-config
+    secrets:
+      - postgres-password
+    links:
+      - postgres
+  postgres:
+    image: postgres
+    env_file: ./postgres-config
+    secrets:
+      - postgres-password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+secrets:
+  postgres-password:
+    file: ./postgres-password
+
+volumes:
+  pgdata:

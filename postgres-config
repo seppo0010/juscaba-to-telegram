@@ -1,0 +1,4 @@
+POSTGRES_USER=juscaba-to-telegram
+POSTGRES_DB=juscaba-to-telegram
+POSTGRES_PASSWORD_FILE=/run/secrets/postgres-password
+POSTGRES_HOST=postgres
