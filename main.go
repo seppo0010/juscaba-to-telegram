@@ -37,6 +37,19 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
-	db.AddExpediente(exp)
-	fmt.Printf("%#v\n", exp)
+	err = db.AddExpediente(exp)
+	if err != nil {
+		os.Exit(1)
+	}
+	actuaciones, err := exp.GetActuaciones()
+	if err != nil {
+		os.Exit(1)
+	}
+	for _, act := range actuaciones {
+		fmt.Printf("%#v\n", act)
+		err = db.AddActuacion(exp, act)
+		if err != nil {
+			os.Exit(1)
+		}
+	}
 }

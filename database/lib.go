@@ -48,7 +48,7 @@ func NewPostgresService(connString string) (*PostgresService, error) {
 	}
 	err = runMigrations(connString)
 	if err != nil {
-		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to run migrations for slack_github_follow")
+		logrus.WithFields(logrus.Fields{"error": err}).Error("Failed to run migrations")
 		return nil, err
 	}
 	return &PostgresService{
@@ -112,6 +112,43 @@ func (db *PostgresService) AddExpediente(exp *libjuscaba.Ficha) error {
 			"anio":   exp.Anio,
 			"error":  err.Error(),
 		}).Error("failed to save expediente")
+		return err
+	}
+	return nil
+}
+
+func (db *PostgresService) AddActuacion(exp *libjuscaba.Ficha, act *libjuscaba.Actuacion) error {
+	_, err := db.client.Exec(`
+	INSERT INTO actuacion (
+		numero,
+		anio,
+		id,
+		titulo,
+		fecha_firma
+	) VALUES (
+		$1,
+		$2,
+		$3,
+		$4,
+		$5
+	)
+	ON CONFLICT (numero, anio, id) DO UPDATE SET
+		titulo = $4,
+		fecha_firma = $5
+	`,
+		exp.Numero,
+		exp.Anio,
+		act.ActId,
+		act.Titulo,
+		time.Unix(int64(act.FechaFirma), 0),
+	)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"numero": exp.Numero,
+			"anio":   exp.Anio,
+			"id":     act.ActId,
+			"error":  err.Error(),
+		}).Error("failed to save actuacion")
 		return err
 	}
 	return nil

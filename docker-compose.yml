@@ -7,6 +7,8 @@ services:
       - postgres-password
     links:
       - postgres
+    depends_on:
+      - postgres
   postgres:
     image: postgres
     env_file: ./postgres-config
