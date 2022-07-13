@@ -62,14 +62,25 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
+	notify := true
 	for _, act := range actuaciones {
 		exists, err := db.HasActuacion(exp, act)
 		if err != nil {
 			os.Exit(1)
 		}
 		if !exists {
-			msg := tgbotapi.NewMessage(-524601465, act.Titulo)
-			bot.Send(msg)
+			if notify {
+				msg := tgbotapi.NewMessage(-524601465,
+					fmt.Sprintf("%v: %v", act.Firmantes, act.Titulo),
+				)
+				_, err = bot.Send(msg)
+				if err != nil {
+					logrus.WithFields(logrus.Fields{
+						"error": err.Error(),
+					}).Error("failed to post to telegram")
+					os.Exit(1)
+				}
+			}
 
 			logrus.WithFields(logrus.Fields{
 				"exp": exp,

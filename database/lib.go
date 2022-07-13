@@ -146,22 +146,26 @@ func (db *PostgresService) AddActuacion(exp *libjuscaba.Ficha, act *libjuscaba.A
 		anio,
 		id,
 		titulo,
+		firmantes,
 		fecha_firma
 	) VALUES (
 		$1,
 		$2,
 		$3,
 		$4,
-		$5
+		$5,
+		$6
 	)
 	ON CONFLICT (numero, anio, id) DO UPDATE SET
 		titulo = $4,
-		fecha_firma = $5
+		firmantes = $5,
+		fecha_firma = $6
 	`,
 		exp.Numero,
 		exp.Anio,
 		act.ActId,
 		act.Titulo,
+		act.Firmantes,
 		time.Unix(int64(act.FechaFirma/1000), 0),
 	)
 	if err != nil {
