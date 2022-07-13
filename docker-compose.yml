@@ -5,6 +5,7 @@ services:
     env_file: ./postgres-config
     secrets:
       - postgres-password
+      - telegram-token
     links:
       - postgres
     depends_on:
@@ -20,6 +21,8 @@ services:
 secrets:
   postgres-password:
     file: ./postgres-password
+  telegram-token:
+    file: ./telegram-token
 
 volumes:
   pgdata:
