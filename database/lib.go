@@ -102,8 +102,8 @@ func (db *PostgresService) AddExpediente(exp *libjuscaba.Ficha) error {
 		exp.Radicaciones.OrganismoSegundaInstancia,
 		exp.Ubicacion.Organismo,
 		exp.Ubicacion.Dependencia,
-		time.Unix(int64(exp.FechaInicio), 0),
-		time.Unix(int64(exp.UltimoMovimiento), 0),
+		time.Unix(int64(exp.FechaInicio/1000), 0),
+		time.Unix(int64(exp.UltimoMovimiento/1000), 0),
 		exp.Caratula,
 	)
 	if err != nil {
@@ -115,6 +115,28 @@ func (db *PostgresService) AddExpediente(exp *libjuscaba.Ficha) error {
 		return err
 	}
 	return nil
+}
+
+func (db *PostgresService) HasActuacion(exp *libjuscaba.Ficha, act *libjuscaba.Actuacion) (bool, error) {
+	count := 0
+	err := db.client.QueryRow(`
+		SELECT COUNT(*) FROM actuacion
+		WHERE numero = $1 AND anio = $2 AND id = $3
+		`,
+		exp.Numero,
+		exp.Anio,
+		act.ActId,
+	).Scan(&count)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"numero": exp.Numero,
+			"anio":   exp.Anio,
+			"id":     act.ActId,
+			"error":  err.Error(),
+		}).Error("failed to fetch actuacion")
+		return false, err
+	}
+	return count > 0, nil
 }
 
 func (db *PostgresService) AddActuacion(exp *libjuscaba.Ficha, act *libjuscaba.Actuacion) error {
@@ -140,7 +162,7 @@ func (db *PostgresService) AddActuacion(exp *libjuscaba.Ficha, act *libjuscaba.A
 		exp.Anio,
 		act.ActId,
 		act.Titulo,
-		time.Unix(int64(act.FechaFirma), 0),
+		time.Unix(int64(act.FechaFirma/1000), 0),
 	)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{

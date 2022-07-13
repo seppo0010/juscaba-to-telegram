@@ -46,10 +46,19 @@ func main() {
 		os.Exit(1)
 	}
 	for _, act := range actuaciones {
-		fmt.Printf("%#v\n", act)
-		err = db.AddActuacion(exp, act)
+		exists, err := db.HasActuacion(exp, act)
 		if err != nil {
 			os.Exit(1)
+		}
+		if !exists {
+			logrus.WithFields(logrus.Fields{
+				"exp": exp,
+				"act": act,
+			}).Info("new actuacion")
+			err = db.AddActuacion(exp, act)
+			if err != nil {
+				os.Exit(1)
+			}
 		}
 	}
 }
