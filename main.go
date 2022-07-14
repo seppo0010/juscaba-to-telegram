@@ -12,6 +12,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const MAX_NOTIFICATIONS = 4
+
 func main() {
 	telegramToken, err := os.ReadFile("/run/secrets/telegram-token")
 	if err != nil {
@@ -71,7 +73,7 @@ func main() {
 		}
 		if !exists {
 			notified++
-			if notified < 4 {
+			if notified < MAX_NOTIFICATIONS {
 				msg := tgbotapi.NewMessage(-524601465,
 					fmt.Sprintf("%v: %v", act.Firmantes, act.Titulo),
 				)
@@ -82,7 +84,7 @@ func main() {
 					}).Error("failed to post to telegram")
 					os.Exit(1)
 				}
-			} else if notified == 3 {
+			} else if notified == MAX_NOTIFICATIONS {
 				msg := tgbotapi.NewMessage(-524601465, "(y más...)")
 				_, err = bot.Send(msg)
 				if err != nil {
