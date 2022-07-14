@@ -86,7 +86,6 @@ func main() {
 		}).Error("failed to read postgres password")
 		os.Exit(1)
 	}
-
 	db, err := database.NewPostgresService(fmt.Sprintf(
 		"postgres://%v:%v@%v/%v?sslmode=disable",
 		os.Getenv("POSTGRES_USER"),
