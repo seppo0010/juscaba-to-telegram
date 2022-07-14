@@ -15,7 +15,6 @@ import (
 )
 
 const MAX_NOTIFICATIONS = 4
-const CHANNEL = -524601465
 
 func sendActuacionDocumento(bot *tgbotapi.BotAPI, exp *libjuscaba.Ficha, act *libjuscaba.Actuacion, doc *libjuscaba.Documento, channelID int64) error {
 	res, err := http.Get(doc.URL)
@@ -105,25 +104,25 @@ func createDatabase() *database.PostgresService {
 	return db
 }
 
-func notifyExpedienteUpdates(bot *tgbotapi.BotAPI, db *database.PostgresService, expID string, channelID int64) {
+func notifyExpedienteUpdates(bot *tgbotapi.BotAPI, db *database.PostgresService, expID string, channelID int64) error {
 	exp, err := libjuscaba.GetExpediente(expID)
 	if err != nil {
-		os.Exit(1)
+		return err
 	}
 	err = db.AddExpediente(exp)
 	if err != nil {
-		os.Exit(1)
+		return err
 	}
 	actuaciones, err := exp.GetActuaciones()
 	if err != nil {
-		os.Exit(1)
+		return err
 	}
 	notified := 0
 	for i := range actuaciones {
 		act := actuaciones[len(actuaciones)-i-1]
 		exists, err := db.HasActuacion(exp, act)
 		if err != nil {
-			os.Exit(1)
+			return err
 		}
 		if !exists {
 			notified++
@@ -133,7 +132,7 @@ func notifyExpedienteUpdates(bot *tgbotapi.BotAPI, db *database.PostgresService,
 					logrus.WithFields(logrus.Fields{
 						"error": err.Error(),
 					}).Error("failed to post to telegram")
-					os.Exit(1)
+					return err
 				}
 			} else if notified == MAX_NOTIFICATIONS {
 				msg := tgbotapi.NewMessage(channelID, "(y más...)")
@@ -142,7 +141,7 @@ func notifyExpedienteUpdates(bot *tgbotapi.BotAPI, db *database.PostgresService,
 					logrus.WithFields(logrus.Fields{
 						"error": err.Error(),
 					}).Error("failed to post to telegram")
-					os.Exit(1)
+					return err
 				}
 			}
 
@@ -152,14 +151,26 @@ func notifyExpedienteUpdates(bot *tgbotapi.BotAPI, db *database.PostgresService,
 			}).Info("new actuacion")
 			err = db.AddActuacion(exp, act)
 			if err != nil {
-				os.Exit(1)
+				return err
 			}
 		}
 	}
+	return nil
 }
 
 func main() {
 	bot := createBot()
 	db := createDatabase()
-	notifyExpedienteUpdates(bot, db, "182908/2020-0", CHANNEL)
+	subs, err := db.ListSubscriptions()
+	if err != nil {
+		os.Exit(1)
+	}
+	exit := 0
+	for _, sub := range subs {
+		err = notifyExpedienteUpdates(bot, db, sub.ExpedienteID, sub.ChannelID)
+		if err != nil {
+			exit = 1
+		}
+	}
+	os.Exit(exit)
 }
