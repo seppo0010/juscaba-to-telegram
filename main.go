@@ -17,7 +17,7 @@ import (
 const MAX_NOTIFICATIONS = 4
 const CHANNEL = -524601465
 
-func sendActuacionDocumento(bot *tgbotapi.BotAPI, exp *libjuscaba.Ficha, act *libjuscaba.Actuacion, doc *libjuscaba.Documento) error {
+func sendActuacionDocumento(bot *tgbotapi.BotAPI, exp *libjuscaba.Ficha, act *libjuscaba.Actuacion, doc *libjuscaba.Documento, channelID int64) error {
 	res, err := http.Get(doc.URL)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
@@ -37,7 +37,7 @@ func sendActuacionDocumento(bot *tgbotapi.BotAPI, exp *libjuscaba.Ficha, act *li
 		return err
 	}
 
-	msg := tgbotapi.NewDocument(CHANNEL, tgbotapi.FileBytes{
+	msg := tgbotapi.NewDocument(channelID, tgbotapi.FileBytes{
 		Name:  fmt.Sprintf("%v: %v - %v.pdf", act.Firmantes, act.Titulo, doc.Nombre),
 		Bytes: content,
 	})
@@ -45,8 +45,8 @@ func sendActuacionDocumento(bot *tgbotapi.BotAPI, exp *libjuscaba.Ficha, act *li
 	return err
 }
 
-func sendActuacion(bot *tgbotapi.BotAPI, exp *libjuscaba.Ficha, act *libjuscaba.Actuacion) error {
-	msg := tgbotapi.NewMessage(CHANNEL,
+func sendActuacion(bot *tgbotapi.BotAPI, exp *libjuscaba.Ficha, act *libjuscaba.Actuacion, channelID int64) error {
+	msg := tgbotapi.NewMessage(channelID,
 		fmt.Sprintf("%v: %v", act.Firmantes, act.Titulo),
 	)
 	_, err := bot.Send(msg)
@@ -58,7 +58,7 @@ func sendActuacion(bot *tgbotapi.BotAPI, exp *libjuscaba.Ficha, act *libjuscaba.
 		return err
 	}
 	for _, doc := range documentos {
-		_ = sendActuacionDocumento(bot, exp, act, doc)
+		_ = sendActuacionDocumento(bot, exp, act, doc, channelID)
 	}
 	return nil
 }
@@ -105,11 +105,8 @@ func createDatabase() *database.PostgresService {
 	return db
 }
 
-func main() {
-	bot := createBot()
-	db := createDatabase()
-
-	exp, err := libjuscaba.GetExpediente("182908/2020-0")
+func notifyExpedienteUpdates(bot *tgbotapi.BotAPI, db *database.PostgresService, expID string, channelID int64) {
+	exp, err := libjuscaba.GetExpediente(expID)
 	if err != nil {
 		os.Exit(1)
 	}
@@ -131,7 +128,7 @@ func main() {
 		if !exists {
 			notified++
 			if notified < MAX_NOTIFICATIONS {
-				err = sendActuacion(bot, exp, act)
+				err = sendActuacion(bot, exp, act, channelID)
 				if err != nil {
 					logrus.WithFields(logrus.Fields{
 						"error": err.Error(),
@@ -139,7 +136,7 @@ func main() {
 					os.Exit(1)
 				}
 			} else if notified == MAX_NOTIFICATIONS {
-				msg := tgbotapi.NewMessage(CHANNEL, "(y más...)")
+				msg := tgbotapi.NewMessage(channelID, "(y más...)")
 				_, err = bot.Send(msg)
 				if err != nil {
 					logrus.WithFields(logrus.Fields{
@@ -159,4 +156,10 @@ func main() {
 			}
 		}
 	}
+}
+
+func main() {
+	bot := createBot()
+	db := createDatabase()
+	notifyExpedienteUpdates(bot, db, "182908/2020-0", CHANNEL)
 }
