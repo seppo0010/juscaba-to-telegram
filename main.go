@@ -63,7 +63,7 @@ func sendActuacion(bot *tgbotapi.BotAPI, exp *libjuscaba.Ficha, act *libjuscaba.
 	return nil
 }
 
-func main() {
+func createBot() *tgbotapi.BotAPI {
 	telegramToken, err := os.ReadFile("/run/secrets/telegram-token")
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
@@ -78,7 +78,10 @@ func main() {
 		}).Error("failed to start telegram bot")
 		os.Exit(1)
 	}
+	return bot
+}
 
+func createDatabase() *database.PostgresService {
 	dbPassword, err := os.ReadFile(os.Getenv("POSTGRES_PASSWORD_FILE"))
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
@@ -99,6 +102,12 @@ func main() {
 		}).Error("failed to connect to database")
 		os.Exit(1)
 	}
+	return db
+}
+
+func main() {
+	bot := createBot()
+	db := createDatabase()
 
 	exp, err := libjuscaba.GetExpediente("182908/2020-0")
 	if err != nil {
