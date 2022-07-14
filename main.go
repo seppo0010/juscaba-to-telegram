@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"strings"
 
@@ -13,6 +15,53 @@ import (
 )
 
 const MAX_NOTIFICATIONS = 4
+const CHANNEL = -524601465
+
+func sendActuacionDocumento(bot *tgbotapi.BotAPI, exp *libjuscaba.Ficha, act *libjuscaba.Actuacion, doc *libjuscaba.Documento) error {
+	res, err := http.Get(doc.URL)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"error": err.Error(),
+			"url":   doc.URL,
+		}).Warn("Failed to get url")
+		return err
+	}
+	defer res.Body.Close()
+
+	content, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"error": err.Error(),
+			"url":   doc.URL,
+		}).Error("Failed to read url data")
+		return err
+	}
+
+	msg := tgbotapi.NewDocument(CHANNEL, tgbotapi.FileBytes{
+		Name:  fmt.Sprintf("%v: %v - %v.pdf", act.Firmantes, act.Titulo, doc.Nombre),
+		Bytes: content,
+	})
+	_, err = bot.Send(msg)
+	return err
+}
+
+func sendActuacion(bot *tgbotapi.BotAPI, exp *libjuscaba.Ficha, act *libjuscaba.Actuacion) error {
+	msg := tgbotapi.NewMessage(CHANNEL,
+		fmt.Sprintf("%v: %v", act.Firmantes, act.Titulo),
+	)
+	_, err := bot.Send(msg)
+	if err != nil {
+		return err
+	}
+	documentos, err := libjuscaba.FetchDocumentos(exp, act)
+	if err != nil {
+		return err
+	}
+	for _, doc := range documentos {
+		_ = sendActuacionDocumento(bot, exp, act, doc)
+	}
+	return nil
+}
 
 func main() {
 	telegramToken, err := os.ReadFile("/run/secrets/telegram-token")
@@ -74,10 +123,7 @@ func main() {
 		if !exists {
 			notified++
 			if notified < MAX_NOTIFICATIONS {
-				msg := tgbotapi.NewMessage(-524601465,
-					fmt.Sprintf("%v: %v", act.Firmantes, act.Titulo),
-				)
-				_, err = bot.Send(msg)
+				err = sendActuacion(bot, exp, act)
 				if err != nil {
 					logrus.WithFields(logrus.Fields{
 						"error": err.Error(),
@@ -85,7 +131,7 @@ func main() {
 					os.Exit(1)
 				}
 			} else if notified == MAX_NOTIFICATIONS {
-				msg := tgbotapi.NewMessage(-524601465, "(y más...)")
+				msg := tgbotapi.NewMessage(CHANNEL, "(y más...)")
 				_, err = bot.Send(msg)
 				if err != nil {
 					logrus.WithFields(logrus.Fields{
