@@ -1,0 +1,2 @@
+ALTER TABLE actuacion ALTER COLUMN firmantes TYPE TEXT;
+ALTER TABLE actuacion ALTER COLUMN titulo TYPE TEXT;
