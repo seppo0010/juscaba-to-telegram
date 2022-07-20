@@ -104,8 +104,8 @@ func createDatabase() *database.PostgresService {
 	return db
 }
 
-func notifyExpedienteUpdates(bot *tgbotapi.BotAPI, db *database.PostgresService, expID string, channelID int64) error {
-	exp, err := libjuscaba.GetExpediente(expID)
+func notifyExpedienteUpdates(bot *tgbotapi.BotAPI, db *database.PostgresService, sub *database.Subscription) error {
+	exp, err := libjuscaba.GetExpediente(sub.ExpedienteID)
 	if err != nil {
 		return err
 	}
@@ -126,22 +126,24 @@ func notifyExpedienteUpdates(bot *tgbotapi.BotAPI, db *database.PostgresService,
 		}
 		if !exists {
 			notified++
-			if notified < MAX_NOTIFICATIONS {
-				err = sendActuacion(bot, exp, act, channelID)
-				if err != nil {
-					logrus.WithFields(logrus.Fields{
-						"error": err.Error(),
-					}).Error("failed to post to telegram")
-					return err
-				}
-			} else if notified == MAX_NOTIFICATIONS {
-				msg := tgbotapi.NewMessage(channelID, "(y más...)")
-				_, err = bot.Send(msg)
-				if err != nil {
-					logrus.WithFields(logrus.Fields{
-						"error": err.Error(),
-					}).Error("failed to post to telegram")
-					return err
+			for _, channelID := range sub.ChannelsID {
+				if notified < MAX_NOTIFICATIONS {
+					err = sendActuacion(bot, exp, act, channelID)
+					if err != nil {
+						logrus.WithFields(logrus.Fields{
+							"error": err.Error(),
+						}).Error("failed to post to telegram")
+						return err
+					}
+				} else if notified == MAX_NOTIFICATIONS {
+					msg := tgbotapi.NewMessage(channelID, "(y más...)")
+					_, err = bot.Send(msg)
+					if err != nil {
+						logrus.WithFields(logrus.Fields{
+							"error": err.Error(),
+						}).Error("failed to post to telegram")
+						return err
+					}
 				}
 			}
 
@@ -167,7 +169,7 @@ func main() {
 	}
 	exit := 0
 	for _, sub := range subs {
-		err = notifyExpedienteUpdates(bot, db, sub.ExpedienteID, sub.ChannelID)
+		err = notifyExpedienteUpdates(bot, db, sub)
 		if err != nil {
 			exit = 1
 		}
