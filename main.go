@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
@@ -167,12 +168,10 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
-	exit := 0
-	for _, sub := range subs {
-		err = notifyExpedienteUpdates(bot, db, sub)
-		if err != nil {
-			exit = 1
+	for {
+		for _, sub := range subs {
+			_ = notifyExpedienteUpdates(bot, db, sub)
 		}
+		time.Sleep(5 * time.Minute)
 	}
-	os.Exit(exit)
 }
